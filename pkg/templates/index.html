@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static',filename='style.css') }}">
+    <title>Welcome to Demo Bank</title>
+</head>
+<body>
+    <h1>LANDING PAGE OF DEMO BANK</h1>
+    <a href="{{ url_for('bpuser.home') }}">Click Here to Visit The User Module</a>
+    <br><br>
+    <a href="{{ url_for('bpadmin.home') }}">Click Here to Visit The Admin Module</a>
+</body>
+</html>

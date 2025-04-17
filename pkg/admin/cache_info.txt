@@ -1,0 +1,117 @@
+HOW TO USE FLASK CACHING
+
+
+CACHING IN THE BACKEND===============================================================================
+
+STEPS
+
+1. pip install flask-caching redis
+2. from flask_caching import Cache:
+
+from flask import Flask, jsonify
+from flask_caching import Cache
+import time
+
+app = Flask(__name__)
+
+# Redis Configuration
+app.config["CACHE_TYPE"] = "RedisCache"
+app.config["CACHE_REDIS_URL"] = "redis://localhost:6379/0"
+
+cache = Cache(app)
+
+# Sample Function to Simulate Database Query
+def slow_function():
+    time.sleep(3)  # Simulate slow database query
+    return {"message": "Data fetched from database"}
+
+# Cache the Route for 60 Seconds
+@app.route("/cached-data")
+@cache.cached(timeout=60)  # Cache this endpoint for 60 seconds
+def get_cached_data():
+    return jsonify(slow_function())
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
+
+How It Works
+First request → Flask calls slow_function(), causing a 3-second delay.
+Redis stores the response for 60 seconds.
+Subsequent requests within 60 seconds → Data is served instantly from cache.
+After 60 seconds → Cache expires, and Flask fetches fresh data again.
+
+
+
+
+
+MANUAL CACHING====================
+Using cache.get() and cache.set() for Manual Caching
+Instead of caching an entire route, you can cache specific data manually.
+
+@app.route("/manual-cache")
+def manual_cache():
+    cached_data = cache.get("my_key")
+    
+    if cached_data:
+        return jsonify({"message": "Cached Data", "data": cached_data})
+
+    new_data = slow_function()  # Fetch fresh data
+    cache.set("my_key", new_data, timeout=120)  # Cache for 120 seconds
+    return jsonify({"message": "Fresh Data", "data": new_data})
+
+
+
+Explanation:
+
+If "my_key" exists in cache, return cached data instantly.
+Otherwise, fetch new data, store it in cache for 120 seconds, then return it.
+
+🛠️ When NOT to Use Caching
+❌ Rapidly Changing Data: Data that updates frequently (e.g., live stock prices, real-time chat) is better fetched directly.
+❌ Sensitive Data: Never cache personal user details like passwords or authentication tokens.
+❌ Large Data Sets: Caching huge datasets can consume too much memory.
+
+
+
+
+
+
+
+CACHING IN THE FRONTEND===============================================================================
+
+Caching in React (Frontend)
+If you’re building a React + Flask app, you can cache API responses in the frontend too!
+
+Example Using LocalStorage
+
+const fetchData = async () => {
+    const cachedData = localStorage.getItem("dashboardData");
+
+    if (cachedData) {
+        return JSON.parse(cachedData); // Return cached data
+    }
+
+    const response = await fetch("http://127.0.0.1:5000/dashboard");
+    const data = await response.json();
+    
+    localStorage.setItem("dashboardData", JSON.stringify(data)); // Cache for later use
+    return data;
+};
+
+
+🛠️ When to Use React Caching
+✅ When data is not frequently changing
+✅ When reducing API calls (e.g., user profile info, settings)
+✅ When improving performance (e.g., preloading dashboard data)
+
+
+
+
+🔹 Final Thoughts
+✅ Caching improves performance and reduces database load.
+✅ Use Flask-Caching with Redis for backend caching.
+✅ Use React’s LocalStorage or caching libraries for frontend optimization.
+✅ Be cautious when caching dynamic or sensitive data.
+
