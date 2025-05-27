@@ -4,20 +4,35 @@ from sqlalchemy import or_
 from pkg.models import db, Administrator, Driver, Order, Shipping
 from pkg import mail
 from flask import current_app, make_response
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, set_access_cookies
 from pkg.jwt_auth.jwt import generate_admin_verification_token, generate_admin_verification_link, create_jwt_token
 from sqlalchemy.exc import SQLAlchemyError
 from flask_mail import Message
 import jwt
 from . import adminobj
 
+
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "http://localhost:5173")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        response.status_code = 200
+        return response
+            
+
 @adminobj.route('/')
 def home():
     return render_template('admin/index.html')
 
-@adminobj.route("/signup/", methods=["POST"])
+@adminobj.route("/admin_signup/", methods=["POST"])
 def admin_signup():
     try:
+        preflight = handle_preflight()
+        if preflight: return preflight
+        
         data = request.get_json()
         if not data:
             return jsonify({"error": "Missing JSON data"}), 400
@@ -26,12 +41,16 @@ def admin_signup():
         admin_lastname = data.get("lastname")
         admin_username = data.get("username")
         admin_password = data.get("password")
+        admin_confirm_password = data.get("confirmPassword")
         admin_email = data.get("email")
-        admin_phone_number = data.get("phonenumber")
+        admin_phone_number = data.get("contactNo")
         admin_image = data.get("image_url")
 
-        if not all([admin_firstname, admin_lastname, admin_username, admin_password, admin_email, admin_phone_number]):
+        if not all([admin_firstname, admin_lastname, admin_username, admin_password, admin_email, admin_phone_number, admin_image, admin_confirm_password]):
             return jsonify({"error": "All fields are required"}), 400
+        
+        if admin_password != admin_confirm_password:
+            return jsonify({"error": "Password do not Match"}), 400
 
     #    filter codition
         existing_admin = Administrator.query.filter(
@@ -39,8 +58,9 @@ def admin_signup():
         ).first()
 
         if existing_admin:
-            return jsonify({"error": "Email or username already exists, please choose another."}), 409
-
+            return jsonify({"error": "Email already exists, please choose another."}), 409
+        
+        
         secured_password = generate_password_hash(admin_password)
 
         new_admin = Administrator(
@@ -94,7 +114,10 @@ def verify_admin_email(token):
             if admin_user:
                 admin_user.is_verified = "True"
                 db.session.commit()
-                return jsonify({"message": "Email verified successfully"}), 200
+                new_token = create_jwt_token(email)
+                response = make_response(redirect("http://localhost:5173/dashboard/"))
+                response.set_cookie("access_token", new_token, httponly=True, secure=True, samesite="lax")
+                return response
                 
             return jsonify({"message": "Invalid email"}), 401
         return jsonify({"message": "Invalid email"}), 401
@@ -108,9 +131,12 @@ def verify_admin_email(token):
     
     
     
-@adminobj.route("/admin_login/", methods=["GET", "POST"])
+@adminobj.route("/admin_login/", methods=["POST", "OPTIONS"])
 def admin_login():
     try:
+        preflight = handle_preflight()
+        if preflight: return preflight
+        
         data = request.get_json()
         if not data:
             return jsonify({"error": "Missing JSON data"}), 400
@@ -128,7 +154,7 @@ def admin_login():
         hashed_password = admin.admin_password
         if check_password_hash(hashed_password, password):
             token = create_jwt_token(admin.admin_id)
-            response = make_response(jsonify({"message": "Logged in Successfully", "access_token": token}), 202)
+            response = make_response(jsonify({"message": "Logged in Successfully"}), 202)
             response.set_cookie("access_token", token, httponly=True, secure=True, samesite="lax")
             return response  
         

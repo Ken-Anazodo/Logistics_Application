@@ -1,3 +1,4 @@
 vrki/
 .env
 instance/
+config.py

@@ -4,6 +4,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 
@@ -52,6 +53,8 @@ def create_app():
     csrf.init_app(app)
     mail.init_app(app)
     jwt.init_app(app)
+    CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+
 
     ##removing csrf protection from the routes in api package
     csrf.exempt(apiobj)
