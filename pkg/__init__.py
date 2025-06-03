@@ -38,6 +38,11 @@ def create_app():
     app.config.from_object(config.LiveConfig)
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'fallback-secret-key')
+    app.config["JWT_TOKEN_LOCATION"] = ["cookies"]  # ONLY cookies
+    app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
+    app.config["JWT_COOKIE_SECURE"] = os.getenv('JWT_COOKIE_SECURE')
+    app.config["JWT_COOKIE_SAMESITE"] = os.getenv('JWT_COOKIE_SAMESITE')
+    app.config["JWT_COOKIE_CSRF_PROTECT"] = os.getenv('JWT_COOKIE_CSRF_PROTECT')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS')
     app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
@@ -66,4 +71,4 @@ def create_app():
 
 app = create_app()
 
-from pkg import models,forms,general_route
+from pkg import models, general_route

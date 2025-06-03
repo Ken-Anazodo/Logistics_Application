@@ -52,7 +52,7 @@ def admin_signup():
         if admin_password != admin_confirm_password:
             return jsonify({"error": "Password do not Match"}), 400
 
-    #    filter codition
+    #    filter condition
         existing_admin = Administrator.query.filter(
             (Administrator.admin_email == admin_email) | (Administrator.admin_username == admin_username)
         ).first()
@@ -108,7 +108,7 @@ def verify_admin_email(token):
         payload = jwt.decode(token, jwt_key, algorithms=["HS256"])
 
         email = payload.get("email")
-        # print("Extracted Email:", email)  # Debugging
+        # print("Extracted Email:", email)  
         if email:
             admin_user = Administrator.query.filter_by(admin_email=email).first()
             if admin_user:
@@ -116,7 +116,7 @@ def verify_admin_email(token):
                 db.session.commit()
                 new_token = create_jwt_token(email)
                 response = make_response(redirect("http://localhost:5173/dashboard/"))
-                response.set_cookie("access_token", new_token, httponly=True, secure=True, samesite="lax")
+                set_access_cookies(response, new_token)
                 return response
                 
             return jsonify({"message": "Invalid email"}), 401
@@ -149,13 +149,13 @@ def admin_login():
 
         admin = Administrator.query.filter_by(admin_username=username).first()
         if not admin:
-            return jsonify({"error": "Wrong Username"}), 401
+            return jsonify({"error": "Username does not exist"}), 401
         
         hashed_password = admin.admin_password
         if check_password_hash(hashed_password, password):
             token = create_jwt_token(admin.admin_id)
             response = make_response(jsonify({"message": "Logged in Successfully"}), 202)
-            response.set_cookie("access_token", token, httponly=True, secure=True, samesite="lax")
+            set_access_cookies(response, token)
             return response  
         
         return jsonify({"error": "Wrong Password"}), 401
@@ -177,6 +177,9 @@ def admin_login():
 @jwt_required()
 def driver_informations():
     try:
+        preflight = handle_preflight()
+        if preflight: return preflight
+        
         # Get all drivers
         drivers = Driver.query.all()
 
@@ -224,8 +227,12 @@ def driver_informations():
 
 
 @adminobj.route("/orders/", methods=["GET"])
+@jwt_required()
 def get_orders():
     try:
+        preflight = handle_preflight()
+        if preflight: return preflight
+        
         orders = db.session.query(Order).all()
         
         if not orders:
@@ -271,8 +278,12 @@ def get_orders():
     
     
 @adminobj.route("/shipping/", methods=["GET"])
+@jwt_required()
 def get_shipping():
     try:
+        preflight = handle_preflight()
+        if preflight: return preflight
+        
         ship_details = Shipping.query.all()
         
         if not ship_details:
@@ -308,3 +319,14 @@ def get_shipping():
     
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+    
+    
+
+@adminobj.route("/dashboard/", methods=["GET"])
+@jwt_required()
+def admin_dashboard():
+    preflight = handle_preflight()
+    if preflight: return preflight
+    get_jwt_identity()
+    return jsonify({"authenticated": "true"}), 200
+    
